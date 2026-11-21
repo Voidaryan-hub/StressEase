@@ -1,0 +1,96 @@
+{% set active_page = 'journal' %}
+{% extends "base.html" %}
+
+{% block title %}Journal Insights | StressEase AI{% endblock %}
+{% block meta_description %}Write journal entries and track your mood trends over time with visual charts.{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-title">
+    <h1>Journal Insights</h1>
+    <p>Write about how you're feeling. Your entries are saved locally and visualized as a mood trend chart.</p>
+  </div>
+
+  <section class="dashboard-grid">
+    <article class="card">
+      <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></div>
+      <h2>Add Journal Entry</h2>
+      <div class="field">
+        <textarea id="journalEntry" rows="5" placeholder="How are you feeling today? Write a brief note..."></textarea>
+      </div>
+      <div class="actions" style="margin-top:12px;">
+        <button class="button" id="addEntryBtn" type="button">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          Add Entry
+        </button>
+      </div>
+    </article>
+
+    <article class="card" style="grid-column: span 2;">
+      <h2>Journal Entry Mood Trend</h2>
+      <div style="position:relative; height:240px; margin-top:12px;">
+        <canvas id="journalChart"></canvas>
+      </div>
+    </article>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const savedJournal = JSON.parse(localStorage.getItem("journalEntries") || "[]");
+  const rootStyle = getComputedStyle(document.documentElement);
+  const primaryColor = rootStyle.getPropertyValue('--primary').trim() || '#0d9488';
+
+  const ctxJournal = document.getElementById('journalChart').getContext('2d');
+  const journalChart = new Chart(ctxJournal, {
+    type: 'line',
+    data: {
+      labels: savedJournal.map(e => e.date),
+      datasets: [{
+        label: 'Mood Score (1-10)',
+        data: savedJournal.map(e => e.moodScore),
+        borderColor: primaryColor,
+        backgroundColor: primaryColor + '20',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 5,
+        pointBackgroundColor: primaryColor,
+        pointBorderWidth: 2,
+        pointBorderColor: '#fff',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { min: 0, max: 10, grid: { color: 'rgba(128,128,128,0.1)' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  document.getElementById("addEntryBtn").addEventListener("click", function() {
+    const entryText = document.getElementById("journalEntry").value.trim();
+    if (!entryText) { showToast("Please write something first!", "warning"); return; }
+
+    const today = new Date().toISOString().split("T")[0];
+    const moodScore = Math.floor(Math.random() * 5) + 6;
+
+    savedJournal.push({ date: today, moodScore, text: entryText });
+    localStorage.setItem("journalEntries", JSON.stringify(savedJournal));
+
+    journalChart.data.labels.push(today);
+    journalChart.data.datasets[0].data.push(moodScore);
+    journalChart.update();
+
+    document.getElementById("journalEntry").value = "";
+    showToast("Journal entry added!", "success");
+  });
+</script>
+{% endblock %}

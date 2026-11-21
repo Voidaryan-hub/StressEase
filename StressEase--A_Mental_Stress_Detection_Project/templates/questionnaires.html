@@ -1,0 +1,158 @@
+{% set active_page = 'questionnaires' %}
+{% extends "base.html" %}
+
+{% block title %}DASS-21 & PSS | StressEase AI{% endblock %}
+{% block meta_description %}Complete standardized DASS-21 and PSS-10 questionnaires for stress, anxiety, and depression screening.{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-title">
+    <h1>Standardized Stress Questionnaires</h1>
+    <p>DASS-21 and PSS-10 are questionnaire-based screening tools used for project monitoring and self-awareness. They are not medical diagnosis.</p>
+  </div>
+
+  <section class="dashboard-grid">
+    <article class="card">
+      <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></div>
+      <h2>PSS-10</h2>
+      <p>Perceived Stress Scale. Rate each item from 0 to 4.</p>
+      <form id="pssForm">
+        <div class="history-list" id="pssQuestions"></div>
+        <div class="actions" style="margin-top:16px;">
+          <button class="button" type="submit">Score PSS-10</button>
+        </div>
+      </form>
+    </article>
+
+    <article class="card">
+      <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></div>
+      <h2>DASS-21</h2>
+      <p>Depression, Anxiety, and Stress Scale. Rate each item from 0 to 3.</p>
+      <form id="dassForm">
+        <div class="history-list scroll-history" id="dassQuestions"></div>
+        <div class="actions" style="margin-top:16px;">
+          <button class="button" type="submit">Score DASS-21</button>
+        </div>
+      </form>
+    </article>
+
+    <article class="card" style="height: 460px; display: flex; flex-direction: column; min-height: 0;">
+      <h2>Questionnaire Results</h2>
+      <div class="history-list scroll-history" id="questionnaireHistory" style="flex: 1; max-height: none; overflow-y: auto; min-height: 0;"></div>
+    </article>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const pssQuestions = [
+    "Upset because something happened unexpectedly",
+    "Unable to control important things in your life",
+    "Nervous and stressed",
+    "Confident about handling personal problems",
+    "Things were going your way",
+    "Could not cope with all the things you had to do",
+    "Able to control irritations in your life",
+    "Felt on top of things",
+    "Angered because things were outside your control",
+    "Difficulties were piling up too high"
+  ];
+
+  const dassQuestions = [
+    "I found it hard to wind down",
+    "I was aware of dryness of my mouth",
+    "I could not seem to experience any positive feeling",
+    "I experienced breathing difficulty",
+    "I found it difficult to work up initiative",
+    "I tended to over-react to situations",
+    "I experienced trembling",
+    "I felt I was using a lot of nervous energy",
+    "I was worried about situations where I might panic",
+    "I felt down-hearted and blue",
+    "I found myself getting agitated",
+    "I found it difficult to relax",
+    "I was unable to become enthusiastic",
+    "I was intolerant of anything that kept me from continuing",
+    "I felt I was close to panic",
+    "I felt I was not worth much as a person",
+    "I felt I was rather touchy",
+    "I felt I was easily upset",
+    "I was aware of heart action without exertion",
+    "I felt scared without any good reason",
+    "I felt life was meaningless"
+  ];
+
+  function renderScale(containerId, questions, maxValue) {
+    document.getElementById(containerId).innerHTML = questions.map((question, index) => `
+      <div class="field">
+        <label>${index + 1}. ${question}</label>
+        <div class="range-row">
+          <input type="range" min="0" max="${maxValue}" value="0" id="${containerId}_${index}">
+          <span class="value-badge" id="${containerId}_${index}_value">0</span>
+        </div>
+      </div>
+    `).join("");
+
+    questions.forEach((_, index) => {
+      const input = document.getElementById(`${containerId}_${index}`);
+      const output = document.getElementById(`${containerId}_${index}_value`);
+      input.addEventListener("input", () => output.textContent = input.value);
+    });
+  }
+
+  function answersFor(containerId, count) {
+    return Array.from({length: count}, (_, index) => Number(document.getElementById(`${containerId}_${index}`).value));
+  }
+
+  function renderHistory() {
+    const history = JSON.parse(localStorage.getItem("StressEaseQuestionnaireHistory") || "[]");
+    const el = document.getElementById("questionnaireHistory");
+    if (!history.length) {
+      el.innerHTML = '<div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><p>No questionnaire results yet. Complete a PSS-10 or DASS-21 assessment.</p></div>';
+      return;
+    }
+    el.innerHTML = history.slice(-12).reverse().map(item => {
+      const score = item.test === "PSS-10"
+        ? `${item.score}/${item.max_score} — ${item.level}`
+        : `D:${item.depression_level}, A:${item.anxiety_level}, S:${item.stress_level}`;
+      return `<div class="history-item"><strong>${item.test}</strong><span>${score}</span></div>`;
+    }).join("");
+  }
+
+  async function submitQuestionnaire(testType, answers) {
+    const response = await fetch("/api/submit-questionnaire", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({test_type: testType, answers})
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      showToast(data.error || "Unable to score questionnaire.", "error");
+      return;
+    }
+
+    const entry = {...data, time: new Date().toLocaleString()};
+    localStorage.setItem("latestQuestionnaireResult", JSON.stringify(entry));
+    const history = JSON.parse(localStorage.getItem("StressEaseQuestionnaireHistory") || "[]");
+    history.push(entry);
+    localStorage.setItem("StressEaseQuestionnaireHistory", JSON.stringify(history.slice(-30)));
+    renderHistory();
+    showToast(`${data.test} scored successfully!`, "success");
+  }
+
+  renderScale("pssQuestions", pssQuestions, 4);
+  renderScale("dassQuestions", dassQuestions, 3);
+  renderHistory();
+
+  document.getElementById("pssForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitQuestionnaire("pss", answersFor("pssQuestions", 10));
+  });
+
+  document.getElementById("dassForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitQuestionnaire("dass", answersFor("dassQuestions", 21));
+  });
+</script>
+{% endblock %}

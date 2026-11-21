@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Sign Up | StressEase AI{% endblock %}
+{% block meta_description %}Create your StressEase AI account to start tracking your mental health and wellness.{% endblock %}
+
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="auth-layout">
+  <div class="auth-brand">
+    <div class="auth-brand-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3 4 4.5 4.5 0 0 1-3-4"/><path d="M12 18v4"/></svg>
+    </div>
+    <h1>StressEase AI</h1>
+    <p>Join thousands of students monitoring their stress, mood, and wellbeing with AI-powered insights.</p>
+  </div>
+  <div class="auth-form-side">
+    <div class="panel">
+      <h2>Create your account</h2>
+      <p>Start your mental health monitoring journey.</p>
+      {% if error %}<div class="result-box result-high" style="margin-top:0; margin-bottom:18px;">{{ error }}</div>{% endif %}
+      <form method="post">
+        <div class="form-grid" style="grid-template-columns: 1fr;">
+          <div class="field">
+            <label for="name">Full name</label>
+            <input id="name" name="name" type="text" placeholder="Your name" required>
+          </div>
+          <div class="field">
+            <label for="email">Email address</label>
+            <input id="email" name="email" type="email" placeholder="you@example.com" required>
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" placeholder="Create a password" required>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:22px;">
+          <button class="button" type="submit" style="flex:1;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+            Sign Up
+          </button>
+        </div>
+        <div style="text-align:center; margin-top:18px; color:var(--muted); font-size:14px;">
+          Already have an account? <a href="/login" style="color:var(--primary); font-weight:700;">Login</a>
+        </div>
+        <div style="text-align:center; margin-top:8px;">
+          <a href="/home" style="color:var(--muted); font-size:13px; font-weight:600;">Skip — explore as guest →</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

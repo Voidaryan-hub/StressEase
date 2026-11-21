@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}VibeTube Pro | StressEase AI{% endblock %}
+{% block meta_description %}Watch mood-boosting shorts and relaxing meditation videos curated for stress relief.{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-title">
+    <h1>VibeTube Pro</h1>
+    <p>Watch mood-boosting shorts and relaxing meditation videos curated for stress relief.</p>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1fr 2fr; gap:20px;">
+    <!-- LEFT: SHORTS -->
+    <div class="card" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+      <div style="display:flex; gap:8px;">
+        <button class="button" type="button" id="tabLaugh" onclick="switchTab('laugh', this)">😄 Laugh</button>
+        <button class="button secondary" type="button" id="tabInspire" onclick="switchTab('inspiration', this)">✨ Inspiration</button>
+      </div>
+      <div style="width:260px; height:460px; background:#111; border-radius:var(--radius-lg); overflow:hidden; position:relative; box-shadow:var(--shadow-lg);">
+        <div id="loading" class="loading-overlay" style="position:absolute; inset:0; color:white;">
+          <div class="spinner" style="border-color:rgba(255,255,255,0.2); border-top-color:white;"></div>
+          <span>Loading...</span>
+        </div>
+        <iframe id="shortsPlayer" allowfullscreen style="width:100%; height:100%; border:none;"></iframe>
+      </div>
+      <button class="button secondary" type="button" onclick="nextShort()">
+        Next ▶
+      </button>
+    </div>
+
+    <!-- RIGHT: MEDITATION -->
+    <div class="card" style="display:flex; align-items:center; justify-content:center; min-height:500px;">
+      <div style="width:100%; height:100%; max-height:480px; background:#111; border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow-lg);">
+        <iframe id="meditationPlayer" allowfullscreen style="width:100%; height:100%; min-height:400px; border:none;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  @media (max-width: 900px) {
+    .page > div[style*="grid-template-columns"] {
+      grid-template-columns: 1fr !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const API_KEY = "AIzaSyDPQBJij3q9V04WK0t1h8w8CzLUTduSF24";
+  let shortsVideos = [];
+  let meditationVideos = [];
+  let shortsIndex = 0;
+  let currentCategory = "laugh";
+
+  const queries = {
+    laugh: "#funny #comedy #laugh shorts",
+    inspiration: "#motivation #success #inspiration shorts"
+  };
+  const meditationQuery = "deep meditation relaxing music";
+
+  function switchTab(category, btn) {
+    currentCategory = category;
+    shortsIndex = 0;
+    document.getElementById("tabLaugh").className = category === 'laugh' ? 'button' : 'button secondary';
+    document.getElementById("tabInspire").className = category === 'inspiration' ? 'button' : 'button secondary';
+    fetchShorts();
+  }
+
+  async function fetchShorts() {
+    document.getElementById("loading").style.display = "flex";
+    try {
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(queries[currentCategory])}&type=video&videoDuration=short&maxResults=15&key=${API_KEY}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      shortsVideos = (data.items || []).map(v => v.id.videoId);
+      loadShort();
+    } catch(e) { showToast("Could not load shorts", "error"); }
+  }
+
+  async function fetchMeditation() {
+    try {
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(meditationQuery)}&type=video&videoDuration=long&maxResults=10&key=${API_KEY}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      meditationVideos = (data.items || []).map(v => v.id.videoId);
+      loadMeditation();
+    } catch(e) { showToast("Could not load meditation videos", "error"); }
+  }
+
+  function loadShort() {
+    if (!shortsVideos.length) return;
+    document.getElementById("shortsPlayer").src = `https://www.youtube.com/embed/${shortsVideos[shortsIndex]}?autoplay=1`;
+    document.getElementById("loading").style.display = "none";
+  }
+
+  function nextShort() {
+    shortsIndex = (shortsIndex + 1) % shortsVideos.length;
+    loadShort();
+  }
+
+  function loadMeditation() {
+    if (!meditationVideos.length) return;
+    document.getElementById("meditationPlayer").src = `https://www.youtube.com/embed/${meditationVideos[0]}`;
+  }
+
+  fetchShorts();
+  fetchMeditation();
+</script>
+{% endblock %}

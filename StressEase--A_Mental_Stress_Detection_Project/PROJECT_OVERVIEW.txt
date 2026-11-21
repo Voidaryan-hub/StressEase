@@ -1,0 +1,311 @@
+================================================================
+  StressEase -- A Mental Stress Detection Project
+  COMPLETE PROJECT OVERVIEW & VIVA PREPARATION GUIDE
+================================================================
+
+----------------------------------------------------------------
+SECTION 1: WHAT IS THIS PROJECT?
+----------------------------------------------------------------
+StressEase is a web-based Mental Health Monitoring System that
+detects and tracks stress levels in students/users using multiple
+input methods. It combines Machine Learning, AI chatbot, facial
+expression analysis, and validated psychological questionnaires
+into a single Flask web application.
+
+The core idea: instead of relying on one method to detect stress,
+StressEase uses FOUR different detection approaches simultaneously
+and gives the user a holistic picture of their mental wellness.
+
+
+----------------------------------------------------------------
+SECTION 2: TECH STACK
+----------------------------------------------------------------
+Backend:
+  - Python (Flask web framework)
+  - SQLite (local database for users and records)
+  - MongoDB (optional cloud database for conversations/inputs)
+  - scikit-learn (ML model)
+  - joblib (model serialization)
+  - OpenCV (webcam facial analysis)
+  - OpenRouter API / Gemini API (AI chatbot)
+
+Frontend:
+  - HTML + Tailwind CSS (styling)
+  - Vanilla JavaScript (API calls, UI interactions)
+
+ML:
+  - Random Forest Classifier (trained on StressLevelDataset.csv)
+  - 20 input features -> predicts stress level (0, 1, or 2)
+
+
+----------------------------------------------------------------
+SECTION 3: PROJECT PIPELINE (END TO END)
+----------------------------------------------------------------
+
+STEP 1 — DATA & MODEL TRAINING (model.py)
+  - Dataset: StressLevelDataset.csv (student stress data)
+  - 20 features: anxiety_level, self_esteem, depression,
+    sleep_quality, blood_pressure, academic_performance,
+    study_load, peer_pressure, bullying, etc.
+  - Target variable: stress_level (0=Low, 1=Moderate, 2=High)
+  - Algorithm: Random Forest Classifier (100 trees)
+  - Train/Test split: 80/20
+  - Saved as: model_rf.pkl using joblib
+
+STEP 2 — FLASK APP STARTUP (app.py)
+  - Loads model_rf.pkl into memory
+  - Initializes SQLite database (stressease.db)
+    - users table: stores signup/login credentials
+    - monitoring_records table: stores all detection outputs
+  - Optionally connects to MongoDB (non-blocking if unavailable)
+  - Sets up OpenRouter API key for AI chatbot
+
+STEP 3 — USER AUTHENTICATION
+  - Signup: name, email, password -> password hashed with
+    Werkzeug's generate_password_hash -> stored in SQLite
+  - Login: email + password -> verified with check_password_hash
+  - Session management via Flask sessions
+  - Logout: clears session
+
+STEP 4 — STRESS DETECTION MODULES (4 methods)
+
+  METHOD A: ML-Based Stress Prediction (/predict)
+    - User fills a form with 20 sliders (0-10 scale)
+    - Values sent to Flask -> loaded into a pandas DataFrame
+    - Random Forest model predicts: 0, 1, or 2
+    - Result page shows label + recommendation
+    - Saved to SQLite + MongoDB
+
+  METHOD B: AI Wellness Chatbot (/chatbot)
+    - User types how they feel in natural language
+    - Message + chat history sent to OpenRouter API
+      (model: nvidia/nemotron-3-ultra-550b-a55b:free)
+    - A system prompt makes the AI act as "StressEase AI"
+      wellness assistant
+    - If OpenRouter fails -> tries Gemini API
+    - If both fail -> rule-based local mood analyzer
+      (counts positive/negative keywords -> gives canned reply)
+    - Response saved to SQLite + MongoDB
+
+  METHOD C: Psychological Questionnaires (/questionnaires)
+    - Two validated clinical tools:
+
+    PSS-10 (Perceived Stress Scale):
+      - 10 questions, scored 0-4 each
+      - Some questions are reverse-scored (indices 3,4,6,7)
+      - Total score out of 40
+      - 0-13 = Low, 14-26 = Moderate, 27+ = High stress
+
+    DASS-21 (Depression Anxiety Stress Scale):
+      - 21 questions, scored 0-3 each
+      - Split into 3 subscales: Depression, Anxiety, Stress
+      - Each subscale score multiplied by 2
+      - Separate severity levels for each subscale
+      - Risk determined by worst subscale score
+
+  METHOD D: Real-Time Facial Expression Monitor (/face-detection)
+    - User allows webcam access in browser
+    - Frontend captures frames as base64 images
+    - Sent to /api/analyze-face endpoint
+    - Backend decodes image using OpenCV
+    - Haar Cascade detects face region
+    - Smile Cascade detects smiles in face ROI
+    - Brightness + contrast of face region analyzed
+    - Output: emotion label (Happy/Neutral/Tense) + stress signal
+    - Note: FER2013 CNN model hook exists for future upgrade
+
+STEP 5 — ADDITIONAL FEATURES
+  - Mood Tracker: text input -> keyword-based mood scoring
+    (positive words increase score, negative words decrease)
+    -> mood label: Positive/Neutral/Low/Distressed + risk level
+  - Journal: free-text diary entries saved to MongoDB
+  - Stress History: past prediction records from SQLite
+  - Dashboard: overview of all modules
+  - Calendar & Reminders: mood scheduling
+  - Forum: community discussion page
+  - Resources: mental health resource links
+  - Recommendations: wellness tips based on stress level
+
+STEP 6 — DATA STORAGE
+  - Every module output is saved in TWO places:
+    1. SQLite (always works, local file)
+    2. MongoDB (optional, skipped gracefully if unavailable)
+  - monitoring_records table stores everything with record_type:
+    "stress_prediction", "mood_analysis", "questionnaire",
+    "face_expression", "chat_user", "chat_bot"
+
+
+----------------------------------------------------------------
+SECTION 4: KEY DESIGN DECISIONS (good for viva)
+----------------------------------------------------------------
+1. WHY RANDOM FOREST?
+   - Handles non-linear relationships in stress data
+   - Robust to outliers
+   - No feature scaling needed
+   - Gives feature importance scores
+   - High accuracy on tabular classification tasks
+
+2. WHY DUAL DATABASE (SQLite + MongoDB)?
+   - SQLite: always available, no setup, good for auth + records
+   - MongoDB: flexible schema for varied AI conversation data
+   - If MongoDB is down, app still works via SQLite
+   - Fault tolerance by design
+
+3. WHY MULTIPLE DETECTION METHODS?
+   - Self-reported surveys (PSS, DASS) are clinically validated
+   - ML model catches patterns from multiple lifestyle factors
+   - Facial analysis adds objective physiological signal
+   - Chatbot provides emotional support + conversational context
+   - No single method is fully accurate alone
+
+4. WHY FLASK OVER DJANGO?
+   - Lightweight, minimal boilerplate
+   - Good for ML model integration
+   - Easy to add REST API endpoints
+   - Sufficient for a college project scope
+
+5. WHY OPENROUTER OVER DIRECT GEMINI?
+   - OpenRouter provides access to multiple free models
+   - Model can be swapped without code changes
+   - Free tier available (nvidia/nemotron-3-ultra-550b-a55b:free)
+   - Fallback chain ensures chatbot never fully breaks
+
+
+----------------------------------------------------------------
+SECTION 5: VIVA QUESTIONS & ANSWERS
+----------------------------------------------------------------
+
+Q: What is the accuracy of your ML model?
+A: The Random Forest model is trained on StressLevelDataset.csv
+   with 80/20 train-test split. Typical accuracy on this dataset
+   is around 90-95%. The exact value is printed during training
+   in model.py via accuracy_score().
+
+Q: What are the 20 features used for prediction?
+A: anxiety_level, self_esteem, mental_health_history, depression,
+   headache, blood_pressure, sleep_quality, breathing_problem,
+   noise_level, living_conditions, safety, basic_needs,
+   academic_performance, study_load, teacher_student_relationship,
+   future_career_concerns, social_support, peer_pressure,
+   extracurricular_activities, bullying.
+
+Q: What does the stress_level target variable represent?
+A: 0 = Low stress, 1 = Moderate stress, 2 = High stress.
+   It is a multi-class classification problem.
+
+Q: How is the ML model saved and loaded?
+A: Using joblib.dump() to save as model_rf.pkl and
+   joblib.load() to load it in app.py at startup.
+
+Q: How does PSS-10 reverse scoring work?
+A: Questions at indices 3, 4, 6, 7 are positively framed
+   (e.g. "felt confident"). Their scores are reversed as (4 - score)
+   so higher scores always indicate more stress consistently.
+
+Q: What happens if the AI API is unavailable?
+A: Three-level fallback chain:
+   1. Try OpenRouter (primary)
+   2. Try Gemini API (secondary)
+   3. Use local rule-based keyword mood analyzer (last resort)
+
+Q: How does facial stress detection work without deep learning?
+A: OpenCV Haar Cascades detect face and smile regions.
+   Brightness and contrast of the face ROI are measured.
+   Low brightness or high contrast suggests tension.
+   Smile detection + high brightness suggests happiness.
+   A FER2013 CNN hook exists but the model file is not included.
+
+Q: How is user data secured?
+A: Passwords are never stored in plain text. Werkzeug's
+   generate_password_hash() uses PBKDF2 with SHA-256 by default.
+   Verified with check_password_hash() on login.
+
+Q: What is the difference between PSS-10 and DASS-21?
+A: PSS-10 measures perceived stress only (10 questions, max 40).
+   DASS-21 measures three separate dimensions: Depression, Anxiety,
+   and Stress (21 questions, 7 per subscale, scores x2).
+   DASS-21 is more clinically detailed.
+
+Q: Why use Tailwind CSS?
+A: Utility-first CSS framework. No custom CSS files needed for
+   most UI components. Faster to build responsive layouts.
+
+Q: What is the role of MongoDB in this project?
+A: Stores flexible, schema-less data like AI chat conversations
+   and varied user inputs. It is optional — the app degrades
+   gracefully to SQLite-only if MongoDB is not running.
+
+Q: How does the mood tracker work?
+A: Rule-based keyword matching. Positive words (calm, happy,
+   focused) increase a score. Negative words (stressed, anxious,
+   overwhelmed) decrease it. Final score maps to mood label
+   and risk level with a corresponding recommendation.
+
+Q: What is a Random Forest and how does it work?
+A: An ensemble of decision trees. Each tree is trained on a
+   random subset of data and features (bagging). Final prediction
+   is the majority vote across all 100 trees. This reduces
+   overfitting compared to a single decision tree.
+
+Q: Why did you choose this dataset?
+A: StressLevelDataset.csv contains student stress data with
+   academically relevant features (study_load, peer_pressure,
+   academic_performance) making it suitable for a student-focused
+   mental health monitoring system.
+
+
+----------------------------------------------------------------
+SECTION 6: PROMPT TO USE IN OTHER AI CHATS
+----------------------------------------------------------------
+Copy and paste the following prompt to any AI (ChatGPT, Gemini,
+Claude, etc.) to get help understanding or preparing for viva:
+
+---PROMPT START---
+
+I have a college project called StressEase -- A Mental Stress
+Detection Project. Here is the complete project overview:
+
+It is a Flask web application that detects student stress using
+4 methods:
+
+1. ML Prediction: A Random Forest Classifier trained on
+StressLevelDataset.csv with 20 features (anxiety, sleep quality,
+academic performance, etc.) predicts stress as Low/Moderate/High.
+Model saved as model_rf.pkl using joblib.
+
+2. AI Chatbot: Uses OpenRouter API (nvidia/nemotron model) with a
+wellness system prompt. Falls back to Gemini, then to local
+keyword-based mood analysis if APIs fail.
+
+3. Questionnaires: PSS-10 (Perceived Stress Scale, 10 questions,
+reverse scoring on items 3,4,6,7, max score 40) and DASS-21
+(Depression Anxiety Stress Scale, 21 questions, 3 subscales,
+scores multiplied by 2).
+
+4. Facial Expression: OpenCV Haar Cascade detects face + smile.
+Brightness and contrast of face ROI used to classify emotion as
+Happy/Neutral/Tense. FER2013 CNN hook exists for future upgrade.
+
+Auth: Signup/login with Werkzeug password hashing stored in
+SQLite. Session managed by Flask.
+
+Storage: Dual database -- SQLite (always on, local) and MongoDB
+(optional, graceful fallback). All module outputs saved with
+record_type tags.
+
+Frontend: HTML + Tailwind CSS + vanilla JavaScript.
+
+Based on this, please help me with: [YOUR QUESTION HERE]
+Examples:
+- "Generate 20 viva questions with answers"
+- "Explain the Random Forest algorithm in simple terms"
+- "What are the limitations of this project?"
+- "How would I improve this project?"
+- "Explain PSS-10 scoring in detail"
+
+---PROMPT END---
+
+
+================================================================
+  END OF DOCUMENT
+================================================================

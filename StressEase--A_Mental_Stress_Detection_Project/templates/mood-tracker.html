@@ -1,0 +1,102 @@
+{% set active_page = 'mood' %}
+{% extends "base.html" %}
+
+{% block title %}Mood Detection | StressEase AI{% endblock %}
+{% block meta_description %}Write a journal entry and get AI-powered mood analysis with risk assessment and recommendations.{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-title">
+    <h1>AI Mood Detection</h1>
+    <p>Write a short journal entry. The system estimates mood state, risk level, and a recommended next action.</p>
+  </div>
+
+  <section class="dashboard-grid">
+    <form class="card" id="moodForm">
+      <div class="field">
+        <label for="moodText">Mood journal</label>
+        <textarea id="moodText" rows="9" placeholder="Example: I feel overwhelmed with assignments and I slept badly last night."></textarea>
+      </div>
+      <div class="actions">
+        <button class="button" type="submit">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+          Analyze Mood
+        </button>
+        <button class="button secondary" type="button" id="clearHistory">Clear History</button>
+      </div>
+    </form>
+
+    <section class="card">
+      <div class="label">Latest Mood Result</div>
+      <h2 id="moodLabel">No mood analyzed yet</h2>
+      <p id="moodRecommendation">Submit a journal entry to see mood state and risk.</p>
+      <div class="result-box" id="riskBox">
+        <strong>Risk level:</strong> <span id="riskLevel">Unknown</span>
+      </div>
+    </section>
+
+    <section class="card" style="height: 460px; display: flex; flex-direction: column; min-height: 0;">
+      <h2>Mood History</h2>
+      <div class="history-list scroll-history" id="historyList" style="flex: 1; max-height: none; overflow-y: auto; min-height: 0;"></div>
+    </section>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const historyKey = "StressEaseMoodHistory";
+  const historyList = document.getElementById("historyList");
+
+  function renderHistory() {
+    const history = JSON.parse(localStorage.getItem(historyKey) || "[]");
+    if (!history.length) {
+      historyList.innerHTML = '<div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg><p>No mood entries yet. Write your first journal entry to start tracking.</p></div>';
+      return;
+    }
+    historyList.innerHTML = history.slice(-8).reverse().map(entry => `
+      <div class="history-item">
+        <strong>${entry.mood} — ${entry.risk}</strong>
+        <span>${entry.time}</span>
+      </div>
+    `).join("");
+  }
+
+  document.getElementById("moodForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = document.getElementById("moodText").value.trim();
+    if (!text) return;
+
+    const response = await fetch("/api/analyze-mood", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({text})
+    });
+    const data = await response.json();
+    const entry = {...data, text, time: new Date().toLocaleString()};
+
+    const history = JSON.parse(localStorage.getItem(historyKey) || "[]");
+    history.push(entry);
+    localStorage.setItem(historyKey, JSON.stringify(history.slice(-30)));
+
+    document.getElementById("moodLabel").textContent = data.mood;
+    document.getElementById("riskLevel").textContent = data.risk;
+    document.getElementById("moodRecommendation").textContent = data.recommendation;
+
+    const riskBox = document.getElementById("riskBox");
+    riskBox.className = 'result-box' + (data.risk === 'High' ? ' result-high' : data.risk === 'Moderate' ? ' result-moderate' : data.risk === 'Low' ? ' result-low' : '');
+
+    document.getElementById("moodText").value = "";
+    renderHistory();
+    showToast("Mood analysis complete!", "success");
+  });
+
+  document.getElementById("clearHistory").addEventListener("click", () => {
+    localStorage.removeItem(historyKey);
+    renderHistory();
+    showToast("Mood history cleared", "info");
+  });
+
+  renderHistory();
+</script>
+{% endblock %}

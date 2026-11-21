@@ -1,0 +1,113 @@
+{% set active_page = 'forum' %}
+{% extends "base.html" %}
+
+{% block title %}Community Forum | StressEase AI{% endblock %}
+{% block meta_description %}Share your thoughts, read community posts, and evaluate mood patterns in the StressEase AI forum.{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-title">
+    <h1>Community Forum</h1>
+    <p>Share your thoughts, read community posts, and evaluate mood patterns. All data is stored locally in your browser.</p>
+  </div>
+
+  <div style="display:flex; gap:18px; flex-wrap:wrap; margin-bottom:20px;">
+    <button class="button" type="button" onclick="openTab(event,'postMessage')" id="tabPostBtn">Post Message</button>
+    <button class="button secondary" type="button" onclick="openTab(event,'viewPosts')">View Posts</button>
+    <button class="button secondary" type="button" onclick="openTab(event,'evaluateMood')">Mood Evaluation</button>
+    <button class="button secondary" type="button" onclick="openTab(event,'peerSupport')">Peer Support</button>
+  </div>
+
+  <div class="card tab-content" id="postMessage" style="display:block;">
+    <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></div>
+    <h2>Post Your Thoughts</h2>
+    <div class="field">
+      <textarea id="forumPost" rows="4" placeholder="Write your thoughts..."></textarea>
+    </div>
+    <div class="actions" style="margin-top:12px;">
+      <button class="button" type="button" onclick="postMessage()">Post</button>
+    </div>
+  </div>
+
+  <div class="card tab-content" id="viewPosts">
+    <h2>All Forum Posts</h2>
+    <div class="history-list scroll-history" id="forumPosts" style="max-height:500px;"></div>
+  </div>
+
+  <div class="card tab-content" id="evaluateMood">
+    <h2>Mood Evaluation</h2>
+    <div class="history-list scroll-history" id="moodResults" style="max-height:400px;"></div>
+    <div class="actions" style="margin-top:16px;">
+      <button class="button" type="button" onclick="evaluateMood()">Evaluate All Posts</button>
+    </div>
+  </div>
+
+  <div class="card tab-content" id="peerSupport">
+    <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+    <h2>Peer Support</h2>
+    <div class="history-list">
+      <div class="history-item"><strong>Anonymous Groups</strong><span>Join peer support groups anonymously</span></div>
+      <div class="history-item"><strong>Peer Counselors</strong><span>Connect with trained peer counselors</span></div>
+      <div class="history-item"><strong>Daily Challenges</strong><span>Share and track daily challenges</span></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .tab-content { display: none; }
+  .tab-content.active, #postMessage { display: block; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function openTab(evt, tabName) {
+    document.querySelectorAll(".tab-content").forEach(tc => { tc.classList.remove("active"); tc.style.display = "none"; });
+    document.getElementById(tabName).classList.add("active");
+    document.getElementById(tabName).style.display = "block";
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const savedPosts = JSON.parse(localStorage.getItem("forumPosts") || "[]");
+    savedPosts.forEach(postContent => addPost(postContent, "Previously posted"));
+  });
+
+  function addPost(content, author) {
+    author = author || "Posted just now";
+    const postContainer = document.getElementById("forumPosts");
+    const html = `<div class="history-item" style="cursor:pointer; flex-direction:column; align-items:flex-start; gap:6px;"><p style="margin:0;">${content}</p><span>${author}</span></div>`;
+    postContainer.insertAdjacentHTML("afterbegin", html);
+  }
+
+  function postMessage() {
+    const postInput = document.getElementById("forumPost");
+    const content = postInput.value.trim();
+    if (!content) { showToast("Cannot post empty message!", "warning"); return; }
+    addPost(content);
+    const savedPosts = JSON.parse(localStorage.getItem("forumPosts") || "[]");
+    savedPosts.push(content);
+    localStorage.setItem("forumPosts", JSON.stringify(savedPosts));
+    postInput.value = "";
+    showToast("Posted successfully!", "success");
+  }
+
+  function evaluateMood() {
+    const savedPosts = JSON.parse(localStorage.getItem("forumPosts") || "[]");
+    const moodResultsDiv = document.getElementById("moodResults");
+    moodResultsDiv.innerHTML = "";
+    const happyWords = ["happy","good","great","excited","joy","love"];
+    const sadWords = ["sad","bad","angry","upset","tired","stress"];
+    savedPosts.forEach(post => {
+      let mood = "Neutral";
+      const lc = post.toLowerCase();
+      if (happyWords.some(w => lc.includes(w))) mood = "Happy";
+      else if (sadWords.some(w => lc.includes(w))) mood = "Sad";
+      const levelClass = mood === "Happy" ? "result-level-low" : mood === "Sad" ? "result-level-high" : "result-level-moderate";
+      moodResultsDiv.insertAdjacentHTML("afterbegin",
+        `<div class="history-item" style="flex-direction:column; align-items:flex-start; gap:6px;"><p style="margin:0;">${post}</p><span class="result-level ${levelClass}">${mood}</span></div>`
+      );
+    });
+    showToast("Mood evaluation complete!", "success");
+  }
+</script>
+{% endblock %}

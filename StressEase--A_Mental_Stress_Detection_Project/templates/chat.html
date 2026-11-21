@@ -1,0 +1,137 @@
+{% set active_page = 'chat' %}
+{% extends "base.html" %}
+
+{% block title %}AI Wellness Chat | StressEase AI{% endblock %}
+{% block meta_description %}Chat with StressEase AI for practical self-care guidance and mental wellness support.{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-title" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+    <div>
+      <h1>AI Wellness Assistant</h1>
+      <p>Share how you are feeling. The assistant gives practical self-care guidance and can use a local fallback if the online AI service is unavailable.</p>
+    </div>
+    <button class="button secondary" id="clearChat" style="flex-shrink:0;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      Clear Chat
+    </button>
+  </div>
+
+  <section class="card chat-window">
+    <div class="chat-box" id="chatBox">
+      <div class="message bot">
+        <span class="msg-avatar"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></svg></span>
+        <span>Hi, I'm StressEase AI. Tell me what's affecting your stress or mood today.</span>
+      </div>
+    </div>
+    <form class="chat-form" id="chatForm">
+      <div class="field" style="margin:0;">
+        <textarea id="messageInput" rows="2" placeholder="Message StressEase AI..." autocomplete="off"></textarea>
+      </div>
+      <button class="button" type="submit">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+        Send
+      </button>
+    </form>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const chatBox = document.getElementById("chatBox");
+  const messageInput = document.getElementById("messageInput");
+  const chatForm = document.getElementById("chatForm");
+  const chatKey = "StressEaseChatHistory";
+  let conversationHistory = JSON.parse(localStorage.getItem(chatKey) || "[]");
+
+  function addMessage(text, type) {
+    const message = document.createElement("div");
+    message.className = `message ${type}`;
+    const avatarIcon = type === 'bot'
+      ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></svg>'
+      : '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    message.innerHTML = `<span class="msg-avatar">${avatarIcon}</span><span>${text}</span>`;
+    chatBox.appendChild(message);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    return message;
+  }
+
+  function addTypingIndicator() {
+    const el = document.createElement("div");
+    el.className = "message bot";
+    el.id = "typingIndicator";
+    el.innerHTML = '<span class="msg-avatar"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></svg></span><span class="typing-dots"><span></span><span></span><span></span></span>';
+    chatBox.appendChild(el);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function removeTypingIndicator() {
+    const el = document.getElementById("typingIndicator");
+    if (el) el.remove();
+  }
+
+  function saveMessage(role, text) {
+    conversationHistory.push({role, text});
+    conversationHistory = conversationHistory.slice(-20);
+    localStorage.setItem(chatKey, JSON.stringify(conversationHistory));
+  }
+
+  function loadHistory() {
+    if (!conversationHistory.length) return;
+    chatBox.innerHTML = "";
+    conversationHistory.forEach(item => addMessage(item.text, item.role === "assistant" ? "bot" : "user"));
+  }
+
+  chatForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = messageInput.value.trim();
+    if (!text) return;
+
+    addMessage(text, "user");
+    saveMessage("user", text);
+    messageInput.value = "";
+    chatForm.querySelector("button").disabled = true;
+    addTypingIndicator();
+
+    try {
+      const response = await fetch("/chatbot", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: text, history: conversationHistory})
+      });
+      const data = await response.json();
+      const reply = data.response || "I could not generate a response right now.";
+      removeTypingIndicator();
+      addMessage(reply, "bot");
+      saveMessage("assistant", reply);
+    } catch (error) {
+      removeTypingIndicator();
+      const errMsg = "Connection issue. Try again in a moment.";
+      addMessage(errMsg, "bot");
+      saveMessage("assistant", errMsg);
+    } finally {
+      chatForm.querySelector("button").disabled = false;
+      messageInput.focus();
+    }
+  });
+
+  messageInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      chatForm.requestSubmit();
+    }
+  });
+
+  document.getElementById("clearChat").addEventListener("click", () => {
+    conversationHistory = [];
+    localStorage.removeItem(chatKey);
+    chatBox.innerHTML = "";
+    addMessage("Hi, I'm StressEase AI. Tell me what's affecting your stress or mood today.", "bot");
+    messageInput.focus();
+    showToast("Chat history cleared", "info");
+  });
+
+  loadHistory();
+</script>
+{% endblock %}

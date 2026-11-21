@@ -1,0 +1,145 @@
+{% set active_page = 'predict' %}
+{% extends "base.html" %}
+
+{% block title %}AI Stress Detection | StressEase AI{% endblock %}
+{% block meta_description %}Rate your stress signals and get an AI-powered stress level prediction using our Random Forest model.{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-title">
+    <h1>AI Stress Detection</h1>
+    <p>Rate each signal from 0 to 10. The ML model estimates the current stress level from academic, lifestyle, social, and emotional indicators.</p>
+  </div>
+
+  <form class="card" id="stressForm">
+    <div class="form-grid" id="featureFields"></div>
+    <div class="actions" style="margin-top:24px;">
+      <button class="button" type="submit">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+        Analyze Stress
+      </button>
+      <button class="button secondary" type="button" id="resetBtn">Reset All</button>
+    </div>
+  </form>
+
+  <section class="result-box" id="resultBox" hidden>
+    <div class="label">Prediction Result</div>
+    <h2 id="resultLabel"></h2>
+    <div id="resultBadge" style="margin:8px 0 12px;"></div>
+    <p id="resultText"></p>
+    <div class="actions">
+      <a class="button" href="/dashboard">View Dashboard</a>
+      <a class="button secondary" href="/recommendations">Recommendations</a>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const features = [
+    ["anxiety_level", "Anxiety level", 5],
+    ["self_esteem", "Self esteem", 6],
+    ["mental_health_history", "Mental health history impact", 2],
+    ["depression", "Depression symptoms", 4],
+    ["headache", "Headache frequency", 3],
+    ["blood_pressure", "Blood pressure concern", 3],
+    ["sleep_quality", "Sleep quality", 6],
+    ["breathing_problem", "Breathing problem", 2],
+    ["noise_level", "Noise level", 4],
+    ["living_conditions", "Living conditions", 6],
+    ["safety", "Safety feeling", 7],
+    ["basic_needs", "Basic needs access", 7],
+    ["academic_performance", "Academic performance", 6],
+    ["study_load", "Study load", 5],
+    ["teacher_student_relationship", "Teacher-student relationship", 6],
+    ["future_career_concerns", "Future career concerns", 5],
+    ["social_support", "Social support", 6],
+    ["peer_pressure", "Peer pressure", 4],
+    ["extracurricular_activities", "Extracurricular balance", 5],
+    ["bullying", "Bullying or harassment", 1]
+  ];
+
+  const featureFields = document.getElementById("featureFields");
+
+  function renderFields() {
+    featureFields.innerHTML = features.map(([name, label, value]) => {
+      const sliderValue = 0;
+      return `
+      <div class="field">
+        <label for="${name}">${label}</label>
+        <div class="range-row">
+          <input id="${name}" name="${name}" type="range" min="0" max="10" value="${sliderValue}">
+          <span class="value-badge" id="${name}_value">${sliderValue}</span>
+        </div>
+      </div>
+      `;
+    }).join("");
+
+    features.forEach(([name]) => {
+      const input = document.getElementById(name);
+      const output = document.getElementById(`${name}_value`);
+      input.addEventListener("input", () => output.textContent = input.value);
+    });
+  }
+  renderFields();
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    features.forEach(([name]) => {
+      const input = document.getElementById(name);
+      const output = document.getElementById(`${name}_value`);
+      input.value = 0;
+      output.textContent = "0";
+    });
+    document.getElementById("resultBox").hidden = true;
+  });
+
+  document.getElementById("stressForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const payload = {};
+    features.forEach(([name]) => payload[name] = Number(document.getElementById(name).value));
+
+    const resultBox = document.getElementById("resultBox");
+    document.getElementById("resultLabel").textContent = "Analyzing...";
+    document.getElementById("resultBadge").innerHTML = '<div class="loading-overlay"><div class="spinner"></div><span>Processing signals...</span></div>';
+    document.getElementById("resultText").textContent = "";
+    resultBox.hidden = false;
+    resultBox.className = "result-box";
+
+    try {
+      const response = await fetch("/api/predict-stress", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        document.getElementById("resultLabel").textContent = "Prediction failed";
+        document.getElementById("resultBadge").innerHTML = '';
+        document.getElementById("resultText").textContent = data.error || "Please try again.";
+        resultBox.className = "result-box result-high";
+        showToast("Prediction failed. Please check inputs.", "error");
+        return;
+      }
+
+      localStorage.setItem("latestStressResult", JSON.stringify(data));
+      const history = JSON.parse(localStorage.getItem("StressEaseStressHistory") || "[]");
+      history.push({...data, time: new Date().toLocaleString()});
+      localStorage.setItem("StressEaseStressHistory", JSON.stringify(history.slice(-25)));
+
+      document.getElementById("resultLabel").textContent = data.label;
+      const level = data.prediction === 0 ? 'low' : data.prediction === 1 ? 'moderate' : 'high';
+      document.getElementById("resultBadge").innerHTML = `<span class="result-level result-level-${level}">${data.label}</span>`;
+      resultBox.className = `result-box result-${level}`;
+      document.getElementById("resultText").textContent = data.recommendation;
+      showToast("Stress analysis complete!", "success");
+    } catch(e) {
+      document.getElementById("resultLabel").textContent = "Connection error";
+      document.getElementById("resultBadge").innerHTML = '';
+      document.getElementById("resultText").textContent = "Could not reach the server. Please try again.";
+      showToast("Connection error", "error");
+    }
+  });
+</script>
+{% endblock %}

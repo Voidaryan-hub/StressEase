@@ -1,0 +1,60 @@
+{% set active_page = 'recommendations' %}
+{% extends "base.html" %}
+
+{% block title %}Recommendations | StressEase AI{% endblock %}
+{% block meta_description %}Personalized stress management recommendations based on your latest monitoring results.{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-title">
+    <h1>Personalized Recommendations</h1>
+    <p>Use these actions after each stress or mood check-in. The dashboard highlights the most relevant recommendation from your latest result.</p>
+  </div>
+
+  <section class="feature-grid">
+    <article class="card">
+      <div class="card-icon" style="background: var(--ok-light);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+      </div>
+      <div class="label">Low Risk</div>
+      <h2>Maintain Routine</h2>
+      <p>Keep a stable sleep schedule, regular meals, light physical activity, and one daily mood check-in.</p>
+    </article>
+    <article class="card">
+      <div class="card-icon" style="background: var(--warning-light);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      </div>
+      <div class="label">Moderate Risk</div>
+      <h2>Reduce Load</h2>
+      <p>Break tasks into smaller blocks, take a 10 minute reset, hydrate, and log another mood entry later today.</p>
+    </article>
+    <article class="card">
+      <div class="card-icon" style="background: var(--danger-light);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+      </div>
+      <div class="label">High Risk</div>
+      <h2>Seek Support</h2>
+      <p>Use slow breathing, contact a trusted person, and consider a counselor or healthcare professional if distress continues.</p>
+    </article>
+  </section>
+
+  <section class="card" style="margin-top: 20px;">
+    <h2>Current Recommendation</h2>
+    <p id="currentPlan" style="font-size:16px;">Run a stress detection or mood analysis to generate your current plan.</p>
+    <div class="actions">
+      <a class="button" href="/predict">Run Stress Detection</a>
+      <a class="button secondary" href="/mood-tracker.html">Analyze Mood</a>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const stress = JSON.parse(localStorage.getItem("latestStressResult") || "null");
+  const moods = JSON.parse(localStorage.getItem("StressEaseMoodHistory") || "[]");
+  const latestMood = moods[moods.length - 1];
+  const plan = stress?.recommendation || latestMood?.recommendation;
+  if (plan) document.getElementById("currentPlan").textContent = plan;
+</script>
+{% endblock %}

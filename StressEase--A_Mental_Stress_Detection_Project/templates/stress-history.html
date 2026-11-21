@@ -1,0 +1,99 @@
+{% set active_page = 'dashboard' %}
+{% extends "base.html" %}
+
+{% block title %}Mental Health Trends | StressEase AI{% endblock %}
+{% block meta_description %}Visualize your mental health trends over time with interactive charts for mood, anxiety, stress, and depression.{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-title">
+    <h1>Your Mental Health Trends</h1>
+    <p>Visualize mood, anxiety, stress, and depression patterns over selected time intervals.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+    <label for="timeInterval" style="font-weight:700;">Time interval:</label>
+    <select id="timeInterval" style="border:1.5px solid var(--line); border-radius:10px; padding:10px 14px; font:inherit; background:var(--surface); color:var(--ink);">
+      <option value="7">7 Days</option>
+      <option value="14">14 Days</option>
+      <option value="21">21 Days</option>
+      <option value="30">30 Days</option>
+    </select>
+  </div>
+
+  <div class="dashboard-grid" style="grid-template-columns: repeat(2, 1fr);" id="chartsContainer"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const metrics = ["Mood", "Anxiety", "Stress", "Depression"];
+  const rootStyle = getComputedStyle(document.documentElement);
+  const primaryColor = rootStyle.getPropertyValue('--primary').trim() || '#0d9488';
+  const metricColors = {
+    Mood: "#16a34a",
+    Anxiety: "#d97706",
+    Stress: primaryColor,
+    Depression: "#8b5cf6"
+  };
+
+  function generateRandomData(numPoints) {
+    return Array.from({length: numPoints}, () => Math.random() * 2);
+  }
+
+  function createChart(chartId, data, labels, metric) {
+    const ctx = document.getElementById(chartId).getContext("2d");
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: metric,
+          data: data,
+          borderColor: metricColors[metric],
+          backgroundColor: metricColors[metric] + '20',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: metricColors[metric],
+          pointBorderWidth: 2,
+          pointBorderColor: '#fff',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: "top" } },
+        scales: {
+          y: { min: 0, max: 2, ticks: { stepSize: 0.5 }, title: { display: true, text: "Level (0-2)" }, grid: { color: 'rgba(128,128,128,0.1)' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  const selectInterval = document.getElementById("timeInterval");
+  selectInterval.addEventListener("change", function() {
+    const interval = parseInt(this.value);
+    const labels = Array.from({length: interval}, (_, i) => `Day ${i+1}`);
+    const container = document.getElementById("chartsContainer");
+    container.innerHTML = "";
+
+    metrics.forEach(metric => {
+      const chartId = `${metric}_line_${interval}`;
+      const box = document.createElement("div");
+      box.className = "card";
+      box.style.animation = "fadeInUp 0.5s var(--ease) both";
+      box.innerHTML = `<h3>${metric} Trend</h3><div style="position:relative; height:220px; margin-top:8px;"><canvas id="${chartId}"></canvas></div>`;
+      container.appendChild(box);
+      createChart(chartId, generateRandomData(interval), labels, metric);
+    });
+  });
+
+  selectInterval.dispatchEvent(new Event("change"));
+</script>
+{% endblock %}

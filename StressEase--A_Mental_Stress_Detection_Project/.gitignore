@@ -1,0 +1,7 @@
+.venv/
+.venv*/
+venv/
+ENV_DIR/
+__pycache__/
+*.pyc
+StressEase.db

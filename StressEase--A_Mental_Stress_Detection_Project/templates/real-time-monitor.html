@@ -1,0 +1,138 @@
+{% set active_page = 'face' %}
+{% extends "base.html" %}
+
+{% block title %}Facial Expression Detection | StressEase AI{% endblock %}
+{% block meta_description %}Use your webcam for facial expression recognition and stress signal estimation via OpenCV analysis.{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-title">
+    <h1>Facial Expression Recognition</h1>
+    <p>Start the webcam, capture a frame, and the backend uses OpenCV face analysis to estimate expression and stress signal.</p>
+  </div>
+
+  <section class="dashboard-grid">
+    <article class="card">
+      <h2>Webcam Capture</h2>
+      <video id="video" autoplay playsinline style="width: 100%; border-radius: var(--radius); background: #111; aspect-ratio: 4 / 3;"></video>
+      <canvas id="canvas" width="640" height="480" hidden></canvas>
+      <div class="actions">
+        <button class="button" id="startCamera" type="button">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          Start Camera
+        </button>
+        <button class="button secondary" id="analyzeFrame" type="button" disabled>Analyze Face</button>
+        <button class="button secondary" id="stopCamera" type="button" disabled>Stop</button>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="label">Latest FER Result</div>
+      <h2 id="emotionLabel">Not analyzed</h2>
+      <p id="faceStatus">Start camera and click Analyze Face.</p>
+      <div class="result-box">
+        <strong>Model:</strong> <span id="modelStatus">Checking...</span><br>
+        <strong>Stress signal:</strong> <span id="stressSignal">Unknown</span><br>
+        <strong>Confidence:</strong> <span id="confidence">0%</span><br>
+        <strong>Faces detected:</strong> <span id="faceCount">0</span>
+      </div>
+    </article>
+
+    <article class="card" style="height: 460px; display: flex; flex-direction: column; min-height: 0;">
+      <h2>FER History</h2>
+      <div class="history-list scroll-history" id="ferHistory" style="flex: 1; max-height: none; overflow-y: auto; min-height: 0;"></div>
+    </article>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const historyKey = "StressEaseFaceHistory";
+  let stream = null;
+
+  function renderHistory() {
+    const history = JSON.parse(localStorage.getItem(historyKey) || "[]");
+    const el = document.getElementById("ferHistory");
+    if (!history.length) {
+      el.innerHTML = '<div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="4"/></svg><p>No FER entries yet. Capture a frame to start.</p></div>';
+      return;
+    }
+    el.innerHTML = history.slice(-10).reverse().map(item => `
+      <div class="history-item">
+        <strong>${item.emotion} — ${item.stress_signal}</strong>
+        <span>${item.time}</span>
+      </div>
+    `).join("");
+  }
+
+  async function startCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({video: true, audio: false});
+      video.srcObject = stream;
+      document.getElementById("analyzeFrame").disabled = false;
+      document.getElementById("stopCamera").disabled = false;
+      document.getElementById("startCamera").disabled = true;
+      showToast("Camera started", "success");
+    } catch(e) {
+      showToast("Could not access camera", "error");
+    }
+  }
+
+  function stopCamera() {
+    if (stream) stream.getTracks().forEach(track => track.stop());
+    stream = null;
+    video.srcObject = null;
+    document.getElementById("analyzeFrame").disabled = true;
+    document.getElementById("stopCamera").disabled = true;
+    document.getElementById("startCamera").disabled = false;
+  }
+
+  async function analyzeFrame() {
+    const context = canvas.getContext("2d");
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const image = canvas.toDataURL("image/jpeg", 0.85);
+
+    document.getElementById("emotionLabel").textContent = "Analyzing...";
+    const response = await fetch("/api/analyze-face", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({image})
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      document.getElementById("emotionLabel").textContent = "Error";
+      document.getElementById("faceStatus").textContent = data.error || "Unable to analyze frame.";
+      showToast("Face analysis failed", "error");
+      return;
+    }
+
+    document.getElementById("emotionLabel").textContent = data.emotion;
+    document.getElementById("faceStatus").textContent = data.recommendation;
+    document.getElementById("stressSignal").textContent = data.stress_signal;
+    document.getElementById("confidence").textContent = `${data.confidence}%`;
+    document.getElementById("faceCount").textContent = data.face_count;
+    if (data.model_status) document.getElementById("modelStatus").textContent = data.model_status;
+
+    const entry = {...data, time: new Date().toLocaleString()};
+    localStorage.setItem("latestFaceResult", JSON.stringify(entry));
+    const history = JSON.parse(localStorage.getItem(historyKey) || "[]");
+    history.push(entry);
+    localStorage.setItem(historyKey, JSON.stringify(history.slice(-30)));
+    renderHistory();
+    showToast("Face analysis complete!", "success");
+  }
+
+  document.getElementById("startCamera").addEventListener("click", startCamera);
+  document.getElementById("stopCamera").addEventListener("click", stopCamera);
+  document.getElementById("analyzeFrame").addEventListener("click", analyzeFrame);
+  fetch("/api/fer-model-status")
+    .then(response => response.json())
+    .then(data => document.getElementById("modelStatus").textContent = data.status)
+    .catch(() => document.getElementById("modelStatus").textContent = "OpenCV fallback active.");
+  renderHistory();
+</script>
+{% endblock %}

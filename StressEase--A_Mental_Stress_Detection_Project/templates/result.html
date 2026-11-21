@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Result | StressEase AI{% endblock %}
+{% block meta_description %}View your stress analysis result and personalized recommendations.{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:700px;">
+  <section class="card" style="text-align:center; padding:40px;">
+    <div class="label" style="margin-bottom:16px;">Analysis Result</div>
+    {% if error %}
+      <div class="card-icon" style="margin:0 auto 16px; background:var(--danger-light);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+      </div>
+      <h1>Unable to complete analysis</h1>
+      <p>{{ error }}</p>
+    {% elif label %}
+      {% if prediction == 0 %}
+      <div class="card-icon" style="margin:0 auto 16px; background:var(--ok-light);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+      </div>
+      <span class="result-level result-level-low">{{ label }}</span>
+      {% elif prediction == 1 %}
+      <div class="card-icon" style="margin:0 auto 16px; background:var(--warning-light);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      </div>
+      <span class="result-level result-level-moderate">{{ label }}</span>
+      {% else %}
+      <div class="card-icon" style="margin:0 auto 16px; background:var(--danger-light);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+      </div>
+      <span class="result-level result-level-high">{{ label }}</span>
+      {% endif %}
+      <p style="margin-top:16px; font-size:16px;">{{ recommendation }}</p>
+    {% else %}
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+        <p>No result available. Run a stress detection check first.</p>
+      </div>
+    {% endif %}
+    <div class="actions" style="justify-content:center; margin-top:24px;">
+      <a class="button" href="/predict">Run Another Check</a>
+      <a class="button secondary" href="/dashboard">Open Dashboard</a>
+    </div>
+  </section>
+</div>
+{% endblock %}

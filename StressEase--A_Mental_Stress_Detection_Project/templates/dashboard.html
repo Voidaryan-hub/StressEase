@@ -1,0 +1,168 @@
+{% set active_page = 'dashboard' %}
+{% extends "base.html" %}
+
+{% block title %}Monitoring Dashboard | StressEase AI{% endblock %}
+{% block meta_description %}Track your stress scores, mood trends, and recent self-check activity on the StressEase AI dashboard.{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-title">
+    <h1>Mental Health Dashboard</h1>
+    <p>Track stress score, mood trend, and recent self-check activity. Data is stored locally in your browser for project demo use.</p>
+  </div>
+
+  <section class="metric-grid" style="grid-template-columns: repeat(5, minmax(0,1fr));">
+    <article class="card">
+      <div class="label">Latest Stress</div>
+      <div class="metric" id="latestStress">Not checked</div>
+      <p id="stressNote">Run stress detection to update.</p>
+    </article>
+    <article class="card">
+      <div class="label">Latest Mood</div>
+      <div class="metric" id="latestMood">Not logged</div>
+      <p id="moodNote">Analyze a mood entry to update.</p>
+    </article>
+    <article class="card">
+      <div class="label">Check-ins</div>
+      <div class="metric" id="checkinCount">0</div>
+      <p>Total monitoring entries saved.</p>
+    </article>
+    <article class="card">
+      <div class="label">Latest Face Signal</div>
+      <div class="metric" id="latestFace">Not scanned</div>
+      <p id="faceNote">Use webcam face detection.</p>
+    </article>
+    <article class="card">
+      <div class="label">Latest Questionnaire</div>
+      <div class="metric" id="latestQuestionnaire">Not taken</div>
+      <p id="questionnaireNote">Take DASS-21 or PSS-10.</p>
+    </article>
+  </section>
+
+  <section class="dashboard-grid" style="margin-top: 20px;">
+    <article class="card">
+      <h2>Stress Feature Balance</h2>
+      <p>Academic pressure, sleep, social support, and safety indicators combined.</p>
+      <div class="history-list" id="featureBars"></div>
+    </article>
+    <article class="card">
+      <h2>Mood Trend</h2>
+      <div style="position:relative; height:220px; margin-top:12px;">
+        <canvas id="moodChart"></canvas>
+      </div>
+    </article>
+    <article class="card">
+      <h2>Next Actions</h2>
+      <p id="actionText">Start with a stress detection check and a mood note.</p>
+      <div class="actions">
+        <a class="button" href="/predict">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+          Detect Stress
+        </a>
+        <a class="button secondary" href="/mood-tracker.html">Log Mood</a>
+      </div>
+    </article>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const latestStress = JSON.parse(localStorage.getItem("latestStressResult") || "null");
+  const moodHistory = JSON.parse(localStorage.getItem("StressEaseMoodHistory") || "[]");
+  const stressHistory = JSON.parse(localStorage.getItem("StressEaseStressHistory") || "[]");
+  const latestFace = JSON.parse(localStorage.getItem("latestFaceResult") || "null");
+  const latestQuestionnaire = JSON.parse(localStorage.getItem("latestQuestionnaireResult") || "null");
+
+  if (latestStress) {
+    document.getElementById("latestStress").textContent = latestStress.label;
+    document.getElementById("stressNote").textContent = latestStress.recommendation || "Prediction completed.";
+  }
+  if (moodHistory.length) {
+    const latestMood = moodHistory[moodHistory.length - 1];
+    document.getElementById("latestMood").textContent = latestMood.mood;
+    document.getElementById("moodNote").textContent = latestMood.recommendation;
+  }
+  document.getElementById("checkinCount").textContent = stressHistory.length + moodHistory.length + (latestFace ? 1 : 0) + (latestQuestionnaire ? 1 : 0);
+  if (latestFace) {
+    document.getElementById("latestFace").textContent = latestFace.emotion;
+    document.getElementById("faceNote").textContent = `${latestFace.stress_signal} stress, ${latestFace.confidence}% conf.`;
+  }
+  if (latestQuestionnaire) {
+    document.getElementById("latestQuestionnaire").textContent = latestQuestionnaire.test;
+    document.getElementById("questionnaireNote").textContent = latestQuestionnaire.recommendation || "Scored.";
+  }
+
+  /* Feature Bars */
+  const bars = [
+    ["Academic load", latestStress?.features?.study_load || 4],
+    ["Sleep quality", latestStress?.features?.sleep_quality || 6],
+    ["Anxiety level", latestStress?.features?.anxiety_level || 5],
+    ["Social support", latestStress?.features?.social_support || 5],
+  ];
+  document.getElementById("featureBars").innerHTML = bars.map(([label, value]) => `
+    <div>
+      <div class="history-item"><strong>${label}</strong><span>${value}/10</span></div>
+      <div class="progress"><span style="width:${Math.max(0, Math.min(10, value)) * 10}%"></span></div>
+    </div>
+  `).join("");
+
+  /* Mood Trend Chart */
+  const moodCanvas = document.getElementById("moodChart");
+  if (moodCanvas) {
+    const moodScoreMap = { "Positive": 4, "Neutral": 3, "Low": 2, "Distressed": 1 };
+    const recentMoods = moodHistory.slice(-10);
+    const moodLabels = recentMoods.map(e => new Date(e.time).toLocaleDateString(undefined, { month:'short', day:'numeric' }));
+    const moodScores = recentMoods.map(e => moodScoreMap[e.mood] || 3);
+    const rootStyle = getComputedStyle(document.documentElement);
+    const primaryColor = rootStyle.getPropertyValue('--primary').trim() || '#0d9488';
+
+    new Chart(moodCanvas, {
+      type: 'line',
+      data: {
+        labels: moodLabels.length ? moodLabels : ['No data'],
+        datasets: [{
+          label: 'Mood Level',
+          data: moodScores.length ? moodScores : [0],
+          borderColor: primaryColor,
+          backgroundColor: primaryColor + '20',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 5,
+          pointBackgroundColor: primaryColor,
+          pointBorderWidth: 2,
+          pointBorderColor: '#fff',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+        },
+        scales: {
+          y: {
+            min: 0, max: 5,
+            ticks: {
+              stepSize: 1,
+              callback: function(v) { return ['','Distressed','Low','Neutral','Positive',''][v] || ''; }
+            },
+            grid: { color: 'rgba(128,128,128,0.1)' }
+          },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  if (latestStress?.prediction === 2 || moodHistory[moodHistory.length - 1]?.risk === "High") {
+    document.getElementById("actionText").textContent = "High risk detected. Use breathing, reduce workload, and contact support if symptoms persist.";
+  } else if (latestStress || moodHistory.length) {
+    document.getElementById("actionText").textContent = "Continue daily check-ins and follow your recommendation plan.";
+  }
+</script>
+{% endblock %}
